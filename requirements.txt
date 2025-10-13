@@ -1,0 +1,8 @@
+streamlit
+pandas
+yfinance
+altair
+numpy
+feedparser
+requests
+xgboost
