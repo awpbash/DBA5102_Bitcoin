@@ -7,3 +7,6 @@ feedparser
 requests
 xgboost
 scikit-learn
+openai
+python-dotenv
+altair_viewer
