@@ -7,6 +7,7 @@ from utils import (
     create_sequences, mc_dropout_predict
 )
 from config import MODELS_CONFIG, BTC_TICKER, ANNUAL_TRADING_DAYS, NEWS_FEED_URL
+import tensorflow as tf
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -100,6 +101,7 @@ else:
         elif model_config['type'] == 'xgboost':
             y_pred = model_config['model'].predict(X_xgb)
             y_pred = pd.Series(y_pred, index=df.index)
+
         elif model_config['type'] == 'lstm':
             n_steps = 30
             lstm_feature_cols = ['btc_return', 'volatility_14', 'rsi_14']
@@ -108,14 +110,24 @@ else:
             if required_data_start_loc < 0:
                 st.warning(f"Not enough data for LSTM. Skipping.")
                 continue
+            
             data_for_lstm = df_full.iloc[required_data_start_loc:].copy()
             x_scaler, y_scaler = model_config["x_scaler_obj"], model_config["y_scaler_obj"]
             scaled_features = x_scaler.transform(data_for_lstm[lstm_feature_cols])
             scaled_target = y_scaler.transform(data_for_lstm[['Next_Return']])
             scaled_numpy_array = np.hstack((scaled_features, scaled_target))
             X_test_lstm, _ = create_sequences(scaled_numpy_array, n_steps)
+
             if X_test_lstm.shape[0] > 0:
-                mc_predictions = mc_dropout_predict(model_config["model"], X_test_lstm)
+                # 1. Convert NumPy array to a TensorFlow Tensor
+                X_test_tensor = tf.convert_to_tensor(X_test_lstm, dtype=tf.float32)
+
+                # 2. Call the new, decorated function with the Tensor
+                mc_predictions_tensor = mc_dropout_predict(model_config["model"], X_test_tensor)
+
+                # 3. Convert the result back to a NumPy array for calculations
+                mc_predictions = mc_predictions_tensor.numpy()
+
                 y_pred_scaled = np.mean(mc_predictions, axis=0)
                 y_pred_unscaled = y_scaler.inverse_transform(y_pred_scaled.reshape(-1, 1)).flatten()
                 y_pred = pd.Series(y_pred_unscaled, index=df.index)

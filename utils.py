@@ -23,10 +23,24 @@ def create_sequences(data, n_steps):
         y.append(seq_y)
     return np.array(X), np.array(y)
 
+# --- MODIFIED FUNCTION ---
+@tf.function
 def mc_dropout_predict(model, X, samples=100):
-    predictions = np.zeros((samples, X.shape[0]))
-    for i in range(samples):
-        predictions[i, :] = model(X, training=True).numpy().flatten()
+    """
+    Performs Monte Carlo Dropout prediction using a compiled TensorFlow graph.
+    IMPORTANT: The input 'X' must be a TensorFlow Tensor, not a NumPy array.
+    """
+    # Use a TensorArray to efficiently collect results inside the graph loop
+    predictions_array = tf.TensorArray(dtype=tf.float32, size=samples)
+
+    for i in tf.range(samples):
+        # The model is called with dropout enabled
+        prediction = model(X, training=True)
+        # Store the result, removing any extra dimensions with squeeze
+        predictions_array = predictions_array.write(i, tf.squeeze(prediction))
+
+    # Convert the TensorArray into a single Tensor
+    predictions = predictions_array.stack()
     return predictions
 
 @st.cache_resource
