@@ -6,7 +6,10 @@ numpy
 feedparser
 requests
 xgboost
+tensorflow
 scikit-learn
+joblib
 openai
 python-dotenv
 altair_viewer
+graphviz
